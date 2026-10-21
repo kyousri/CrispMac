@@ -19,6 +19,11 @@ That's all it does:
 
 It lives in the menu bar and has a small settings window.
 
+<p>
+  <img src="docs/images/menu-bar-panel.png" width="340" alt="Menu bar panel with HiDPI switch, resolution slider and refresh rate">
+  <img src="docs/images/settings-window.png" width="340" alt="Settings window with display controls and extra sharp sizes">
+</p>
+
 ## Requirements
 
 - Apple Silicon Mac, macOS 14 or later
@@ -69,6 +74,13 @@ To see what your display offers:
 /Applications/CrispMac.app/Contents/MacOS/CrispMac --list
 ```
 
+## Uninstall
+
+1. In the settings window, click **Remove Extra Sizes** for each monitor you added them to.
+   This deletes the override from `/Library/Displays` and restores any override it replaced.
+2. Quit CrispMac and drag it from `/Applications` to the Trash. macOS removes its login item.
+3. Optionally, delete its settings: `defaults delete com.kyousri.crispmac`
+
 ## Development
 
 ```sh
@@ -93,6 +105,12 @@ The display logic lives in `Sources/CrispCore` and is tested without touching re
 Switching modes uses public macOS APIs. Loading extra sizes without a reboot uses an
 undocumented one, which a macOS update can break; unplugging and replugging the monitor
 does the same job. It's a personal tool shared as is.
+
+## Credits
+
+BetterDisplay showed what's possible. [Acuity](https://github.com/paulhkang94/acuity) and
+Apple's own display overrides in `/System/Library/Displays` confirmed the override format
+that works on Apple Silicon.
 
 ## License
 
