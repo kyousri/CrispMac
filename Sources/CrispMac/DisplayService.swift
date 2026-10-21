@@ -7,6 +7,8 @@ struct ExternalDisplay {
     let id: CGDirectDisplayID
     let key: String
     let name: String
+    let vendor: UInt32
+    let model: UInt32
     let catalog: ModeCatalog
     var currentMode: ModeDescriptor?
 }
@@ -27,6 +29,8 @@ enum DisplayService {
                 id: id,
                 key: key,
                 name: name(of: id),
+                vendor: CGDisplayVendorNumber(id),
+                model: CGDisplayModelNumber(id),
                 catalog: ModeCatalog(modes: usableModes(of: id).map(descriptor)),
                 currentMode: CGDisplayCopyDisplayMode(id).map(descriptor)
             )

@@ -13,8 +13,8 @@ struct DisplayControls: View {
 
     private var catalog: ModeCatalog { state.display.catalog }
     private var sizes: [DisplaySize] { catalog.sizes }
-    private var hasSharpVersion: Bool { catalog.hasSharpVersion(state.setting.size) }
-    private var hiDPIActive: Bool { state.setting.hiDPI && hasSharpVersion }
+    private var canToggleHiDPI: Bool { catalog.canToggleHiDPI(state.setting.size) }
+    private var hiDPIActive: Bool { catalog.usesHiDPI(state.setting.size, wanted: state.setting.hiDPI) }
 
     private var settledIndex: Int {
         let stop = catalog.closestSize(to: state.setting.size) ?? state.setting.size
@@ -43,8 +43,8 @@ struct DisplayControls: View {
     private var hiDPIRow: some View {
         HStack {
             Text("HiDPI")
-            if !hasSharpVersion {
-                Text("Not available at this size")
+            if !canToggleHiDPI {
+                Text(hiDPIActive ? "Always on at this size" : "Not available at this size")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -55,7 +55,7 @@ struct DisplayControls: View {
             ))
             .labelsHidden()
             .toggleStyle(.switch)
-            .disabled(!hasSharpVersion)
+            .disabled(!canToggleHiDPI)
         }
     }
 

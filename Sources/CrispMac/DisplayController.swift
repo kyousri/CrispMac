@@ -6,8 +6,15 @@ struct DisplayState: Identifiable {
     /// What the controls show. `hiDPI` is the user's wish (see `DisplaySetting`).
     var setting: DisplaySetting
     var note: String?
+    /// CrispMac's override with extra sizes is installed for this monitor model.
+    var extraSizesInstalled = false
 
     var id: String { display.key }
+
+    /// Installed but not in the mode list: macOS forgot them and they need a reload.
+    var extraSizesMissing: Bool {
+        extraSizesInstalled && !DisplayOverride.isLoaded(in: display.catalog)
+    }
 }
 
 /// Owns the connected displays, applies changes, and re-applies saved settings
@@ -15,6 +22,8 @@ struct DisplayState: Identifiable {
 @MainActor
 final class DisplayController: ObservableObject {
     @Published private(set) var displays: [DisplayState] = []
+    /// Shown while displays are being reloaded.
+    @Published private(set) var busyMessage: String?
 
     /// A change shown on screen but not yet confirmed in the revert prompt.
     private struct PendingChange {
@@ -136,6 +145,55 @@ final class DisplayController: ObservableObject {
         }
     }
 
+    // MARK: - Extra sizes
+
+    func addExtraSizes(on key: String) {
+        guard let state = displays.first(where: { $0.id == key }), Alerts.confirmReload() else { return }
+        do {
+            try OverrideInstaller.install(for: state.display)
+        } catch {
+            Alerts.show(error, title: "Couldn't add the extra sizes")
+            return
+        }
+        reloadModel(of: state.display)
+    }
+
+    func removeExtraSizes(on key: String) {
+        guard let state = displays.first(where: { $0.id == key }), Alerts.confirmReload() else { return }
+        do {
+            try OverrideInstaller.remove(for: state.display)
+        } catch {
+            Alerts.show(error, title: "Couldn't remove the extra sizes")
+            return
+        }
+        reloadModel(of: state.display)
+    }
+
+    func reloadExtraSizes(on key: String) {
+        guard let state = displays.first(where: { $0.id == key }), Alerts.confirmReload() else { return }
+        reloadModel(of: state.display)
+    }
+
+    /// Reloads every connected display of the same model, since they share one override.
+    private func reloadModel(of display: ExternalDisplay) {
+        keepPending()
+        let ids = displays
+            .map(\.display)
+            .filter { $0.vendor == display.vendor && $0.model == display.model }
+            .map(\.id)
+        busyMessage = "Reloading displays…"
+        Task.detached {
+            let result = Result { try DisplayReloader.reload(ids) }
+            await MainActor.run {
+                self.busyMessage = nil
+                self.refresh()
+                if case .failure(let error) = result {
+                    Alerts.show(error, title: "Couldn't reload the display")
+                }
+            }
+        }
+    }
+
     // MARK: - Keeping displays in sync
 
     private func scheduleRefresh(after delay: TimeInterval) {
@@ -155,11 +213,15 @@ final class DisplayController: ObservableObject {
             prompt.dismiss()
         }
         displays = connected.compactMap { display in
+            var state: DisplayState?
             if let change = pending, change.key == display.key,
                let shown = displays.first(where: { $0.id == display.key }) {
-                return DisplayState(display: display, setting: shown.setting, note: nil)
+                state = DisplayState(display: display, setting: shown.setting, note: nil)
+            } else {
+                state = reapplySaved(on: display)
             }
-            return reapplySaved(on: display)
+            state?.extraSizesInstalled = OverrideInstaller.isInstalled(vendor: display.vendor, model: display.model)
+            return state
         }
     }
 

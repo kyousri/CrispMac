@@ -26,6 +26,7 @@ struct SettingsView: View {
                     DisplayControls(state: selected, controller: controller, showsLegend: true)
                         .padding(8)
                 }
+                ExtraSizesSection(state: selected, controller: controller)
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "display.trianglebadge.exclamationmark")

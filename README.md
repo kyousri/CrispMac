@@ -12,6 +12,7 @@ That's all it does:
 - **HiDPI** on or off
 - **Resolution** slider (dots mark the sizes with a sharp version)
 - **Refresh rate** picker, so you keep 144 Hz
+- **Extra sharp sizes**: one click adds 21 sizes for your monitor, no reboot
 - Settings per monitor, re-applied at login, on wake and when you plug in
 - "Keep this display setting?" after every change, reverting by itself after 10 seconds
 - **⌃⌥⌘0** resets every external display to its native resolution, even if you can't see anything
@@ -46,16 +47,27 @@ macOS 26 hides menu bar icons that don't fit, especially next to the notch. If y
 CrispMac, allow it in **System Settings → Menu Bar**, or open the app again from Finder to
 get the settings window.
 
-## Which sizes are sharp?
+## Extra sharp sizes
 
-CrispMac offers the HiDPI modes macOS itself lists for your display. On a 2560 × 1440 monitor
-that's typically 2048 × 1152 and 1280 × 720 and below. To see what your display offers:
+On its own, macOS offers almost no sharp sizes for a 1440p monitor: 1280 × 720 and below,
+which makes everything huge. In the settings window, **Add More Sharp Sizes** installs a
+display override for your monitor model with 21 sizes from half its width up to native
+(1280 × 720 to 2560 × 1440 on a 1440p monitor), each sharp and normal, at your monitor's
+refresh rates.
+
+- It asks for your password once (the standard macOS prompt). Nothing keeps running in the
+  background with admin rights.
+- Your external displays go black for a few seconds while CrispMac turns them off and on so
+  macOS loads the new sizes. No reboot.
+- **Remove Extra Sizes** undoes it and restores any override another tool had installed.
+- If macOS ever forgets the sizes after sleep or a replug, the menu bar icon shows a warning
+  and **Reload Sizes** brings them back.
+
+To see what your display offers:
 
 ```sh
-build/CrispMac.app/Contents/MacOS/CrispMac --list
+/Applications/CrispMac.app/Contents/MacOS/CrispMac --list
 ```
-
-Adding more sharp sizes without a reboot is planned; see [docs/design.md](docs/design.md).
 
 ## Development
 
@@ -64,13 +76,23 @@ Adding more sharp sizes without a reboot is planned; see [docs/design.md](docs/d
 ./scripts/build-app.sh debug       # debug build of the app
 ```
 
+The app binary has a few command-line helpers that use the same code as the buttons:
+
+```sh
+CrispMac --list                     # modes per display, extra sizes status
+CrispMac --reload                   # turn external displays off and on
+sudo sh -c "$(CrispMac --print-install-command)"   # what "Add More Sharp Sizes" runs
+sudo sh -c "$(CrispMac --print-remove-command)"    # what "Remove Extra Sizes" runs
+```
+
 The display logic lives in `Sources/CrispCore` and is tested without touching real displays.
 `Sources/CrispMac` is the app. See [docs/design.md](docs/design.md) for how it works and why.
 
 ## Caveats
 
-CrispMac v1 only uses public macOS APIs. The planned extra-sizes feature will rely on
-undocumented ones, which a macOS update can break. It's a personal tool shared as is.
+Switching modes uses public macOS APIs. Loading extra sizes without a reboot uses an
+undocumented one, which a macOS update can break; unplugging and replugging the monitor
+does the same job. It's a personal tool shared as is.
 
 ## License
 

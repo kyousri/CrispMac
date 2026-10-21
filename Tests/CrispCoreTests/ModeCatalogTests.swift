@@ -8,16 +8,27 @@ import Testing
         #expect(catalog.nativeSize == size(2560, 1440))
     }
 
-    @Test func onlyPanelAspectRatioSizesAreStops() {
+    @Test func stopsArePanelAspectRatioSizesFromHalfTheNativeWidth() {
         #expect(catalog.sizes == [
-            size(1024, 576), size(1280, 720), size(1344, 756), size(1600, 900),
+            size(1280, 720), size(1344, 756), size(1600, 900),
             size(1920, 1080), size(2048, 1152), size(2560, 1440),
         ])
     }
 
     @Test func sharpSizesAreTheOnesWithAHiDPIMode() {
         let sharp = catalog.sizes.filter(catalog.hasSharpVersion)
-        #expect(sharp == [size(1024, 576), size(1280, 720), size(2048, 1152)])
+        #expect(sharp == [size(1280, 720), size(2048, 1152)])
+    }
+
+    @Test func hiDPICanOnlyBeToggledWhereBothVersionsExist() {
+        #expect(catalog.canToggleHiDPI(size(2048, 1152)))
+        #expect(!catalog.canToggleHiDPI(size(1920, 1080)))
+
+        let sharpOnly = ModeCatalog(modes: [
+            ModeDescriptor(id: 1, width: 2560, height: 1440, pixelWidth: 2560, pixelHeight: 1440, refreshRate: 144, isNative: true),
+            ModeDescriptor(id: 2, width: 2304, height: 1296, pixelWidth: 4608, pixelHeight: 2592, refreshRate: 144),
+        ])
+        #expect(!sharpOnly.canToggleHiDPI(size(2304, 1296)))
     }
 
     @Test func ratesAreDistinctAndHighestFirst() {
@@ -53,6 +64,17 @@ import Testing
         let result = try #require(catalog.resolve(wanted))
         #expect(!result.mode.isHiDPI)
         #expect(result.setting.hiDPI)
+        #expect(!result.isFallback)
+    }
+
+    @Test func hiDPIOffAtASizeThatOnlyExistsSharpStaysSharp() throws {
+        let sharpOnly = ModeCatalog(modes: [
+            ModeDescriptor(id: 1, width: 2560, height: 1440, pixelWidth: 2560, pixelHeight: 1440, refreshRate: 144, isNative: true),
+            ModeDescriptor(id: 2, width: 2304, height: 1296, pixelWidth: 4608, pixelHeight: 2592, refreshRate: 144),
+        ])
+        let wanted = DisplaySetting(size: size(2304, 1296), hiDPI: false, refreshRate: 144)
+        let result = try #require(sharpOnly.resolve(wanted))
+        #expect(result.mode.isHiDPI)
         #expect(!result.isFallback)
     }
 

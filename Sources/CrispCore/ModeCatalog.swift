@@ -13,10 +13,12 @@ public struct Resolution: Equatable, Sendable {
 public struct ModeCatalog: Sendable {
     public let modes: [ModeDescriptor]
     public let nativeSize: DisplaySize
-    /// Slider stops: every available size with the panel's aspect ratio, smallest first.
+    /// Slider stops: every available size with the panel's aspect ratio, at least half the
+    /// native width, smallest first. Smaller sizes are mostly by-products of display overrides.
     public let sizes: [DisplaySize]
 
     private let sharpSizes: Set<DisplaySize>
+    private let normalSizes: Set<DisplaySize>
 
     public init(modes: [ModeDescriptor]) {
         self.modes = modes
@@ -28,21 +30,37 @@ public struct ModeCatalog: Sendable {
         nativeSize = native?.size ?? DisplaySize(width: 0, height: 0)
 
         let allSizes = Set(modes.map(\.size))
-        let matchingAspect: Set<DisplaySize>
+        let stops: Set<DisplaySize>
         if nativeSize.height > 0 {
             let aspect = Double(nativeSize.width) / Double(nativeSize.height)
-            matchingAspect = allSizes.filter {
-                abs(Double($0.width) / Double($0.height) - aspect) < 0.02
+            let minimumWidth = nativeSize.width / 2
+            stops = allSizes.filter {
+                abs(Double($0.width) / Double($0.height) - aspect) < 0.02 && $0.width >= minimumWidth
             }
         } else {
-            matchingAspect = []
+            stops = []
         }
-        sizes = (matchingAspect.isEmpty ? allSizes : matchingAspect).sorted()
+        sizes = (stops.isEmpty ? allSizes : stops).sorted()
         sharpSizes = Set(modes.filter(\.isHiDPI).map(\.size))
+        normalSizes = Set(modes.filter { !$0.isHiDPI }.map(\.size))
     }
 
     public func hasSharpVersion(_ size: DisplaySize) -> Bool {
         sharpSizes.contains(size)
+    }
+
+    public func hasNormalVersion(_ size: DisplaySize) -> Bool {
+        normalSizes.contains(size)
+    }
+
+    /// HiDPI can only be switched at sizes that exist both sharp and normal.
+    public func canToggleHiDPI(_ size: DisplaySize) -> Bool {
+        hasSharpVersion(size) && hasNormalVersion(size)
+    }
+
+    /// Whether a size runs sharp, given the user's HiDPI wish.
+    public func usesHiDPI(_ size: DisplaySize, wanted: Bool) -> Bool {
+        hasSharpVersion(size) && (wanted || !hasNormalVersion(size))
     }
 
     /// Distinct refresh rates for a size, highest first.
@@ -87,7 +105,7 @@ public struct ModeCatalog: Sendable {
             size = nearest
         }
 
-        let hiDPI = wanted.hiDPI && hasSharpVersion(size)
+        let hiDPI = usesHiDPI(size, wanted: wanted.hiDPI)
         let rates = refreshRates(for: size, hiDPI: hiDPI)
         guard
             let rate = rates.first(where: { RefreshRate.matches($0, wanted.refreshRate) }) ?? rates.first,

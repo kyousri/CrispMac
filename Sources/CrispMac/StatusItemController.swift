@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// The menu bar icon and its panel.
@@ -7,15 +8,25 @@ final class StatusItemController: NSObject {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
     private var outsideClickMonitor: Any?
+    private var badgeSubscription: AnyCancellable?
 
     init(controller: DisplayController, openSettings: @escaping () -> Void) {
         super.init()
 
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "display", accessibilityDescription: "CrispMac")
             button.target = self
             button.action = #selector(toggle)
         }
+        // A warning badge when macOS forgot a monitor's extra sizes.
+        badgeSubscription = controller.$displays
+            .map { $0.contains(where: \.extraSizesMissing) }
+            .removeDuplicates()
+            .sink { [weak self] missing in
+                self?.item.button?.image = NSImage(
+                    systemSymbolName: missing ? "display.trianglebadge.exclamationmark" : "display",
+                    accessibilityDescription: missing ? "CrispMac: extra sizes not loaded" : "CrispMac"
+                )
+            }
 
         // Closed by hand rather than `.transient`, so the revert prompt can take
         // clicks without closing the panel mid-adjustment.
