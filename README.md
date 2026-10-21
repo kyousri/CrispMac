@@ -29,6 +29,18 @@ It lives in the menu bar and has a small settings window.
 - Apple Silicon Mac, macOS 14 or later
 - Swift command line tools (`xcode-select --install`); Xcode is not required
 
+## Download
+
+Grab `CrispMac-<version>.zip` from [Releases](https://github.com/kyousri/CrispMac/releases),
+unzip it and move `CrispMac.app` to `/Applications`.
+
+CrispMac isn't notarized by Apple, so macOS blocks it the first time. Try to open it, then go
+to **System Settings → Privacy & Security** and click **Open Anyway**. Or, in Terminal:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/CrispMac.app
+```
+
 ## Build and install
 
 ```sh
@@ -39,9 +51,6 @@ open /Applications/CrispMac.app
 
 Move the app to `/Applications` before the first launch: the first launch turns on launch at
 login for wherever the app is.
-
-The app is signed ad hoc and not notarized. It runs fine on the Mac that built it. A copy
-from another Mac needs right-click → **Open** the first time.
 
 If you also run BetterDisplay or a similar tool, quit it: two apps changing display modes
 will fight each other.
@@ -86,6 +95,7 @@ To see what your display offers:
 ```sh
 ./scripts/test.sh                  # unit tests (Swift Testing)
 ./scripts/build-app.sh debug       # debug build of the app
+./scripts/release.sh 1.0.0         # build, zip and publish a GitHub release
 ```
 
 The app binary has a few command-line helpers that use the same code as the buttons:
